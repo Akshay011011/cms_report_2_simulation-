@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Hydrogen Transport Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050a14;--surface:#0b1221;--surface2:#0f1a2e;
+  --border:rgba(56,189,248,0.14);--border-hi:rgba(56,189,248,0.4);
+  --cyan:#38bdf8;--cyan2:#7dd3fc;--green:#4ade80;--amber:#fb923c;
+  --purple:#a78bfa;--red:#f87171;--yellow:#facc15;
+  --text:#cbd5e1;--dim:#475569;--bright:#f1f5f9;
+  --slow-bg:rgba(251,146,60,0.07);--fast-bg:rgba(74,222,128,0.07);
+}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  display:flex;flex-direction:column;overflow-x:hidden;min-height:100vh;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(56,189,248,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(56,189,248,0.025) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+/* ── HEADER ── */
+header{
+  position:relative;z-index:10;
+  padding:12px 20px;border-bottom:1px solid var(--border);
+  background:rgba(5,10,20,0.85);backdrop-filter:blur(12px);
+  display:flex;align-items:center;gap:14px;flex-shrink:0;
+}
+.hico{
+  width:38px;height:38px;border:1px solid var(--cyan);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  color:var(--cyan);box-shadow:0 0 14px rgba(56,189,248,0.35);flex-shrink:0;
+}
+.htxt h1{font-size:19px;font-weight:700;color:var(--bright);letter-spacing:1.2px;text-transform:uppercase}
+.htxt p{font-size:11px;color:var(--dim);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.sbadge{
+  margin-left:auto;padding:4px 12px;border-radius:4px;
+  background:rgba(167,139,250,0.13);border:1px solid rgba(167,139,250,0.45);
+  color:var(--purple);font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;
+}
+/* ── LAYOUT ── */
+.wrap{
+  position:relative;z-index:1;display:flex;flex:1;
+  padding:14px;gap:14px;align-items:flex-start;
+}
+/* ── CONTROLS ── */
+.ctrl{flex-shrink:0;width:210px;display:flex;flex-direction:column;gap:11px}
+.panel{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:13px;
+}
+.ptitle{
+  font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--cyan);
+  letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:11px;padding-bottom:8px;border-bottom:1px solid var(--border);
+}
+.cg{margin-bottom:13px}
+.clabel{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--text);margin-bottom:5px;font-weight:500;
+}
+.cval{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)}
+.swrap{position:relative}
+.swrap::after{
+  content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  color:var(--cyan);pointer-events:none;font-size:11px;
+}
+select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:4px;color:var(--bright);padding:6px 24px 6px 8px;
+  font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;
+  outline:none;cursor:pointer;appearance:none;
+}
+select:focus{border-color:var(--cyan)}
+input[type=range]{
+  width:100%;height:5px;accent-color:var(--cyan);
+  cursor:pointer;appearance:none;background:var(--surface2);
+  border-radius:3px;outline:none;border:none;
+}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 6px rgba(56,189,248,0.5)}
+.btng{display:flex;gap:7px;margin-bottom:7px}
+.btn{
+  flex:1;padding:8px 4px;border-radius:6px;
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--bright);font-family:'Rajdhani',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  transition:all 0.15s;letter-spacing:.5px;
+}
+.btn:hover{background:var(--surface);border-color:var(--cyan);color:var(--cyan)}
+.btn.on{background:rgba(56,189,248,0.15);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 8px rgba(56,189,248,0.2)}
+.btn-r{border-color:rgba(167,139,250,0.4);color:var(--purple)}
+.btn-r:hover{background:rgba(167,139,250,0.1);border-color:var(--purple)}
+.srow{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px}
+.slabel{color:var(--dim)}
+.sval{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);font-weight:700}
+.sval.warn{color:var(--amber)}.sval.danger{color:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;background:var(--green);animation:pulse 1.4s ease infinite}
+.dot.off{background:var(--amber);animation:none}
+/* ── VIZ ── */
+.viz{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}
+.simwrap{
+  position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;overflow:hidden;
+}
+#simCanvas{display:block;width:100%;height:auto}
+.simtag{
+  position:absolute;top:8px;right:10px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(71,85,105,0.8);
+  pointer-events:none;
+}
+.grow{display:flex;gap:12px}
+.gpanel{
+  flex:1;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:12px;min-width:0;
+}
+.gtitle{
+  font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--dim);
+  letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;
+}
+.gpanel canvas{display:block;width:100%;height:auto}
+.legend{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--dim)}
+.ld{width:8px;height:8px;border-radius:50%}
+.lline{width:14px;height:2px;border-radius:1px}
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:10;padding:7px 20px;
+  border-top:1px solid var(--border);background:rgba(5,10,20,0.85);
+  display:flex;align-items:center;gap:20px;flex-shrink:0;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);
+  flex-wrap:wrap;
+}
+.fs{display:flex;align-items:center;gap:5px}
+.fv{color:var(--cyan);font-weight:700}
+/* disable style */
+.disabled-group{opacity:0.45;pointer-events:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hico">⚛</div>
+  <div class="htxt">
+    <h1>MD Hydrogen Transport Simulator</h1>
+    <p>Atomistic simulation · Layered energy materials · H diffusion dynamics</p>
+  </div>
+  <div class="sbadge" id="sbadge">LAYERED · 2-PHASE</div>
+</header>
+
+<div class="wrap">
+  <!-- Controls -->
+  <aside class="ctrl">
+
+    <div class="panel">
+      <div class="ptitle">⚙ Parameters</div>
+
+      <div class="cg">
+        <div class="clabel">Scenario</div>
+        <div class="swrap">
+          <select id="scSel">
+            <option value="uniform">① Uniform — baseline</option>
+            <option value="layered2" selected>② Layered 2-phase</option>
+            <option value="highRatio">③ High D-ratio (15×)</option>
+            <option value="periodic">④ Periodic layers</option>
+            <option value="tempVar">⑤ Temperature sweep</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cg" id="tg">
+        <div class="clabel">
+          <span>Temperature</span>
+          <span class="cval" id="tv">1000 K</span>
+        </div>
+        <input type="range" id="ts" min="400" max="1600" value="1000" step="50">
+      </div>
+
+      <div class="cg" id="rg">
+        <div class="clabel">
+          <span>D-ratio (fast/slow)</span>
+          <span class="cval" id="rv">5×</span>
+        </div>
+        <input type="range" id="rs" min="2" max="15" value="5" step="1">
+      </div>
+
+      <div class="cg">
+        <div class="clabel">
+          <span>Particles (N)</span>
+          <span class="cval" id="nv">200</span>
+        </div>
+        <input type="range" id="ns" min="50" max="350" value="200" step="10">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">▶ Simulation</div>
+      <div class="btng">
+        <button class="btn" id="startBtn">▶ Run</button>
+        <button class="btn" id="pauseBtn">⏸ Pause</button>
+      </div>
+      <button class="btn btn-r" id="resetBtn" style="width:100%">↺ Reset</button>
+      <div style="margin-top:10px;font-size:10px;color:var(--dim);font-family:'JetBrains Mono',monospace;line-height:1.7">
+        Steps/frame: 5<br>BC: reflect X, periodic Y
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">📊 Live Stats</div>
+      <div class="srow"><span class="slabel">Status</span><span class="sval" id="stv"><span class="dot off"></span>Idle</span></div>
+      <div class="srow"><span class="slabel">Sim time</span><span class="sval" id="simT">0.00 ns</span></div>
+      <div class="srow"><span class="slabel">D_slow</span><span class="sval" id="dS">—</span></div>
+      <div class="srow"><span class="slabel">D_fast</span><span class="sval" id="dF">—</span></div>
+      <div class="srow"><span class="slabel">Pile-up (iface)</span><span class="sval" id="pu">—</span></div>
+      <div class="srow"><span class="slabel">⟨Δx²⟩</span><span class="sval" id="msdv">—</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="ptitle">🔑 Legend</div>
+      <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:13px;height:13px;background:rgba(251,146,60,0.28);border:1px solid rgba(251,146,60,0.6);border-radius:2px;flex-shrink:0"></div>
+          Slow layer (D₁)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:13px;height:13px;background:rgba(74,222,128,0.25);border:1px solid rgba(74,222,128,0.55);border-radius:2px;flex-shrink:0"></div>
+          Fast layer (D₂)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:11px;height:11px;background:var(--cyan);border-radius:50%;box-shadow:0 0 5px var(--cyan);flex-shrink:0"></div>
+          H atom
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:13px;height:2px;background:var(--purple);box-shadow:0 0 5px var(--purple);flex-shrink:0"></div>
+          Interface boundary
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:11px;height:11px;background:var(--amber);border-radius:50%;box-shadow:0 0 5px var(--amber);flex-shrink:0"></div>
+          Pile-up region
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Visualizations -->
+  <section class="viz">
+    <div class="simwrap">
+      <canvas id="simCanvas" width="820" height="300"></canvas>
+      <div class="simtag" id="ftag">frame 0</div>
+    </div>
+    <div class="grow">
+      <div class="gpanel">
+        <div class="gtitle">Concentration Profile  c(x)</div>
+        <canvas id="concCanvas" width="400" height="150"></canvas>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:var(--cyan)"></div>H density</div>
+          <div class="li"><div class="lline" style="background:var(--dim);opacity:0.5"></div>Uniform ref.</div>
+          <div class="li"><div class="lline" style="background:var(--purple)"></div>Interface</div>
+        </div>
+      </div>
+      <div class="gpanel">
+        <div class="gtitle">Mean Square Displacement  ⟨Δx²⟩(t)</div>
+        <canvas id="msdCanvas" width="400" height="150"></canvas>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:var(--green)"></div>MSD</div>
+          <div class="li"><div class="lline" style="background:var(--purple);opacity:0.6"></div>2D·t reference</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="fs">Scenario: <span class="fv" id="footSc">Layered 2-phase</span></div>
+  <div class="fs">T = <span class="fv" id="footT">1000 K</span></div>
+  <div class="fs">D-ratio = <span class="fv" id="footR">5×</span></div>
+  <div class="fs">N = <span class="fv" id="footN">200</span></div>
+  <div style="margin-left:auto;font-size:9px">Roll: 112123007 · 112123018 · 112123035 · 112123040 · 112123072</div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  SIMULATION ENGINE
+// ═══════════════════════════════════════════════════════
+
+const SW = 820, SH = 300;    // sim canvas internal size
+const STEPS = 5;              // physics steps per animation frame
+const TRAIL = 7;              // trail length
+
+const simC  = document.getElementById('simCanvas');
+const conC  = document.getElementById('concCanvas');
+const msdC  = document.getElementById('msdCanvas');
+const sCtx  = simC.getContext('2d');
+const cCtx  = conC.getContext('2d');
+const mCtx  = msdC.getContext('2d');
+
+const CW = 400, CH = 150;    // graph canvas size
+
+// ── State ──
+let particles = [], running = false, frame = 0;
+let msdHistory = [], animId = null;
+let cfg = { scenario:'layered2', temperature:1000, dRatio:5, N:200 };
+
+// ── Math helpers ──
+function gauss(){
+  let u,v;
+  do{u=Math.random()}while(u===0);
+  do{v=Math.random()}while(v===0);
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+// Arrhenius factor normalised at 1000 K
+function tempFactor(){
+  const Ea_k = 3800;
+  return Math.exp(-Ea_k/cfg.temperature)/Math.exp(-Ea_k/1000);
+}
+
+// ── Layer logic ──
+function layerAt(x){
+  const s = cfg.scenario;
+  if(s==='uniform') return 'fast';
+  if(s==='layered2'||s==='tempVar'||s==='highRatio') return x < SW/2 ? 'slow':'fast';
+  if(s==='periodic'){
+    const seg = Math.floor(x/(SW/4))%2;
+    return seg===0 ? 'slow':'fast';
+  }
+  return 'fast';
+}
+
+function D(type){
+  const tf = tempFactor();
+  const ratio = cfg.scenario==='highRatio' ? 15 : cfg.dRatio;
+  const Ds = 4.5 * tf;
+  return type==='fast' ? Ds*ratio : Ds;
+}
+
+function sigma(type){ return Math.sqrt(2*D(type)); }
+
+// ── Interfaces ──
+function interfaces(){
+  const s = cfg.scenario;
+  if(s==='uniform') return [];
+  if(s==='layered2'||s==='highRatio'||s==='tempVar') return [SW/2];
+  if(s==='periodic') return [SW/4, SW/2, 3*SW/4];
+  return [];
+}
+
+// ── Particle update ──
+function step(p){
+  const lt = layerAt(p.x);
+  const sig = sigma(lt);
+  let nx = p.x + gauss()*sig;
+  const ny_raw = p.y + gauss()*sig;
+
+  // Interface crossing probability
+  const clamped = Math.max(1,Math.min(SW-1,nx));
+  const nlt = layerAt(clamped);
+  if(nlt !== lt){
+    const prob = Math.min(1, D(nlt)/D(lt));
+    if(Math.random() > prob) nx = p.x; // reflect
+  }
+
+  // X boundary
+  if(cfg.scenario==='periodic'){
+    nx = ((nx%SW)+SW)%SW;
+  } else {
+    if(nx<0) nx=-nx;
+    if(nx>SW) nx=2*SW-nx;
+    nx=Math.max(0,Math.min(SW,nx));
+  }
+
+  // Y boundary (reflective with margin)
+  let ny = ny_raw;
+  const margin = 18;
+  if(ny<margin) ny = 2*margin - ny;
+  if(ny>SH-margin) ny = 2*(SH-margin) - ny;
+  ny = Math.max(margin, Math.min(SH-margin, ny));
+
+  p.trail.push({x:p.x, y:p.y});
+  if(p.trail.length>TRAIL) p.trail.shift();
+  p.x=nx; p.y=ny;
+}
+
+// ── Init ──
+function init(){
+  particles=[];
+  for(let i=0;i<cfg.N;i++){
+    const x=Math.random()*SW;
+    const y=20+Math.random()*(SH-40);
+    particles.push({x,y,x0:x,y0:y,trail:[]});
+  }
+  frame=0; msdHistory=[];
+}
+
+// ── MSD & pile-up ──
+function msd(){
+  if(!particles.length) return 0;
+  return particles.reduce((s,p)=>s+(p.x-p.x0)**2,0)/particles.length;
+}
+
+function pileup(){
+  const ixs = interfaces();
+  if(!ixs.length) return 0;
+  const band = SW*0.08;
+  let count=0;
+  for(const p of particles){
+    for(const ix of ixs){
+      if(Math.abs(p.x-ix)<band && layerAt(p.x)==='fast') count++;
+    }
+  }
+  const expected = particles.length*(2*band*ixs.length)/SW;
+  if(expected<1) return 0;
+  return Math.max(0,(count/expected-1)*100);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════════
+
+// Atomic lattice (host atoms)
+function lattice(ctx, x0, x1, h, col){
+  const sp = 28;
+  ctx.fillStyle = col;
+  for(let c=Math.floor(x0/sp);c*sp<=x1;c++){
+    for(let r=0;r*sp<=h;r++){
+      const bx = c*sp + (r%2===0?0:sp/2);
+      const by = r*sp;
+      if(bx<x0||bx>x1) continue;
+      const phase = (c*13+r*7)%(Math.PI*2);
+      const vx = 0.6*Math.sin(frame*0.04+phase);
+      const vy = 0.6*Math.cos(frame*0.05+phase+1);
+      ctx.beginPath();
+      ctx.arc(bx+vx,by+vy,1.1,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawSim(){
+  const ctx=sCtx;
+  ctx.clearRect(0,0,SW,SH);
+
+  const s=cfg.scenario;
+  const ixs=interfaces();
+
+  // Layer backgrounds
+  if(s==='uniform'){
+    ctx.fillStyle='rgba(74,222,128,0.07)';
+    ctx.fillRect(0,0,SW,SH);
+    lattice(ctx,0,SW,SH,'rgba(74,222,128,0.08)');
+  } else if(s==='layered2'||s==='highRatio'||s==='tempVar'){
+    ctx.fillStyle='rgba(251,146,60,0.07)'; ctx.fillRect(0,0,SW/2,SH);
+    ctx.fillStyle='rgba(74,222,128,0.07)'; ctx.fillRect(SW/2,0,SW/2,SH);
+    lattice(ctx,0,SW/2,SH,'rgba(251,146,60,0.09)');
+    lattice(ctx,SW/2,SW,SH,'rgba(74,222,128,0.09)');
+  } else if(s==='periodic'){
+    const seg=SW/4;
+    const bg=['rgba(251,146,60,0.07)','rgba(74,222,128,0.07)'];
+    const lc=['rgba(251,146,60,0.09)','rgba(74,222,128,0.09)'];
+    for(let i=0;i<4;i++){
+      ctx.fillStyle=bg[i%2]; ctx.fillRect(i*seg,0,seg,SH);
+      lattice(ctx,i*seg,(i+1)*seg,SH,lc[i%2]);
+    }
+  }
+
+  // Density heat overlay
+  const BINS=30, binW=SW/BINS;
+  const counts=new Array(BINS).fill(0);
+  for(const p of particles){
+    const b=Math.min(BINS-1,Math.floor(p.x/binW));
+    counts[b]++;
+  }
+  const uni=particles.length/BINS;
+  for(let i=0;i<BINS;i++){
+    const excess=counts[i]/Math.max(uni,0.1);
+    if(excess>1.3){
+      const a=Math.min(0.22,(excess-1)*0.1);
+      ctx.fillStyle=`rgba(251,146,60,${a})`;
+      ctx.fillRect(i*binW,0,binW,SH);
+    }
+  }
+
+  // Interface lines
+  ctx.save();
+  ctx.shadowColor='#a78bfa'; ctx.shadowBlur=12;
+  ctx.strokeStyle='rgba(167,139,250,0.75)';
+  ctx.lineWidth=1.5; ctx.setLineDash([7,4]);
+  for(const ix of ixs){
+    ctx.beginPath(); ctx.moveTo(ix,0); ctx.lineTo(ix,SH); ctx.stroke();
+  }
+  ctx.setLineDash([]); ctx.restore();
+
+  // Trails
+  for(const p of particles){
+    for(let i=0;i<p.trail.length;i++){
+      const t=p.trail[i];
+      const a=(i+1)/p.trail.length*0.22;
+      ctx.beginPath(); ctx.arc(t.x,t.y,1.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(56,189,248,${a})`; ctx.fill();
+    }
+  }
+
+  // Particles
+  for(const p of particles){
+    const lt=layerAt(p.x);
+    const excess = counts[Math.min(BINS-1,Math.floor(p.x/binW))]/Math.max(uni,0.1);
+    const isHot = excess>1.6;
+    ctx.shadowColor = isHot?'#fb923c':'#38bdf8';
+    ctx.shadowBlur = isHot?10:6;
+    ctx.beginPath(); ctx.arc(p.x,p.y,2.6,0,Math.PI*2);
+    ctx.fillStyle = isHot?'#fb923c':'#7dd3fc';
+    ctx.fill();
+  }
+  ctx.shadowBlur=0;
+
+  // Layer labels
+  ctx.font='11px "JetBrains Mono",monospace';
+  if(s==='uniform'){
+    ctx.fillStyle='rgba(74,222,128,0.6)'; ctx.fillText('UNIFORM · D_eff',8,16);
+  } else if(s==='layered2'||s==='highRatio'||s==='tempVar'){
+    ctx.fillStyle='rgba(251,146,60,0.65)'; ctx.fillText('SLOW · D₁',8,16);
+    ctx.fillStyle='rgba(74,222,128,0.65)'; ctx.fillText('FAST · D₂',SW/2+8,16);
+    const ratio=s==='highRatio'?15:cfg.dRatio;
+    ctx.fillStyle='rgba(167,139,250,0.55)'; ctx.fillText(`D₂/D₁ = ${ratio}×`,SW/2+8,30);
+  } else if(s==='periodic'){
+    const seg=SW/4;
+    const lc=['rgba(251,146,60,0.65)','rgba(74,222,128,0.65)'];
+    const lt2=['D₁(slow)','D₂(fast)'];
+    for(let i=0;i<4;i++){
+      ctx.fillStyle=lc[i%2]; ctx.fillText(lt2[i%2],i*seg+5,16);
+    }
+  }
+
+  // Frame tag
+  document.getElementById('ftag').textContent=`frame ${frame} | t=${(frame*STEPS*0.001).toFixed(2)} ns`;
+}
+
+// ── Concentration histogram ──
+function drawConc(){
+  const ctx=cCtx, W=CW, H=CH;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(11,18,33,0.6)'; ctx.fillRect(0,0,W,H);
+
+  if(!particles.length) return;
+
+  const BINS=40, bw_sim=SW/BINS;
+  const counts=new Array(BINS).fill(0);
+  for(const p of particles){
+    const b=Math.min(BINS-1,Math.floor(p.x/bw_sim));
+    counts[b]++;
+  }
+  const maxC=Math.max(...counts,1);
+  const uni=particles.length/BINS;
+  const pH=H-20, bw=W/BINS;
+
+  // Uniform reference line
+  const refY=pH-(uni/maxC)*pH;
+  ctx.strokeStyle='rgba(100,116,139,0.4)'; ctx.lineWidth=1;
+  ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(0,refY); ctx.lineTo(W,refY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Bars
+  for(let i=0;i<BINS;i++){
+    const bh=(counts[i]/maxC)*pH;
+    const x=i*bw, y=pH-bh;
+    const exc=counts[i]/Math.max(uni,0.01);
+    let r=56,g=189,b2=248;
+    if(exc>2.0){r=251;g=146;b2=60;}
+    else if(exc>1.5){r=250;g=204;b2=21;}
+    ctx.fillStyle=`rgba(${r},${g},${b2},0.8)`;
+    ctx.fillRect(x+1,y,bw-2,bh);
+  }
+
+  // X axis
+  ctx.strokeStyle='rgba(56,189,248,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,pH); ctx.lineTo(W,pH); ctx.stroke();
+
+  // Interface markers
+  const ixs=interfaces();
+  ctx.strokeStyle='rgba(167,139,250,0.65)'; ctx.lineWidth=1;
+  ctx.setLineDash([3,2]);
+  for(const ix of ixs){
+    const cx=(ix/SW)*W;
+    ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,pH); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='rgba(100,116,139,0.7)'; ctx.font='9px "JetBrains Mono",monospace';
+  ctx.fillText('x=0',2,H-3); ctx.fillText('x=L',W-28,H-3);
+  ctx.fillText('N='+particles.length,2,10);
+}
+
+// ── MSD graph ──
+function drawMSD(){
+  const ctx=mCtx, W=CW, H=CH;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(11,18,33,0.6)'; ctx.fillRect(0,0,W,H);
+
+  if(msdHistory.length<2) return;
+  const pH=H-20, pW=W-12;
+  const n=msdHistory.length;
+  const maxM=Math.max(...msdHistory,1);
+
+  // Theoretical 2Dt line (linear)
+  const D_eff_est = msdHistory.length>5
+    ? (msdHistory[msdHistory.length-1])/(msdHistory.length*STEPS)
+    : D('slow');
+  ctx.strokeStyle='rgba(167,139,250,0.35)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const x=6+(i/(n-1))*pW;
+    const theory=Math.min(1,(i*STEPS*D_eff_est*2)/maxM);
+    const y=pH-theory*pH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // MSD curve
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2;
+  ctx.shadowColor='#4ade80'; ctx.shadowBlur=5;
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const x=6+(i/(n-1))*pW;
+    const y=pH-(msdHistory[i]/maxM)*pH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.shadowBlur=0;
+
+  // Axes
+  ctx.strokeStyle='rgba(56,189,248,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(6,0); ctx.lineTo(6,pH);
+  ctx.moveTo(6,pH); ctx.lineTo(W,pH);
+  ctx.stroke();
+
+  ctx.fillStyle='rgba(100,116,139,0.7)'; ctx.font='9px "JetBrains Mono",monospace';
+  ctx.fillText('0',7,H-3); ctx.fillText('t →',W-26,H-3);
+  ctx.fillText(maxM.toFixed(0)+'px²',8,10);
+}
+
+// ── Stats update ──
+function updateStats(){
+  const m=msd(), pu=pileup();
+  const Ds=D('slow'), Df=D('fast');
+  document.getElementById('simT').textContent=(frame*STEPS*0.001).toFixed(2)+' ns';
+  document.getElementById('dS').textContent=Ds.toFixed(2)+' px²/step';
+  document.getElementById('dF').textContent=Df.toFixed(2)+' px²/step';
+  const puEl=document.getElementById('pu');
+  puEl.textContent=pu.toFixed(1)+'% excess';
+  puEl.className='sval '+(pu>35?'danger':pu>15?'warn':'');
+  document.getElementById('msdv').textContent=m.toFixed(1)+' px²';
+}
+
+function setStatus(s){
+  const el=document.getElementById('stv');
+  const dotC=s==='running'?'dot':'dot off';
+  const label=s==='running'?'Running':s==='paused'?'Paused':'Idle';
+  el.innerHTML=`<span class="${dotC}"></span>${label}`;
+}
+
+// ── Animation loop ──
+function tick(){
+  if(!running) return;
+  for(let s=0;s<STEPS;s++) for(const p of particles) step(p);
+  frame++;
+  if(frame%8===0){
+    msdHistory.push(msd());
+    if(msdHistory.length>300) msdHistory.shift();
+  }
+  drawSim(); drawConc(); drawMSD(); updateStats();
+  animId=requestAnimationFrame(tick);
+}
+
+// ── Badge & footer ──
+const BADGES={
+  uniform:'UNIFORM · BASELINE', layered2:'LAYERED · 2-PHASE',
+  highRatio:'HIGH D-RATIO · 15×', periodic:'PERIODIC · 4-LAYER',
+  tempVar:'TEMPERATURE SWEEP'
+};
+const FOOTLABELS={
+  uniform:'Uniform (baseline)', layered2:'Layered 2-phase',
+  highRatio:'High D-ratio (15×)', periodic:'Periodic layers',
+  tempVar:'Temperature sweep'
+};
+
+function updateBadge(){
+  document.getElementById('sbadge').textContent=BADGES[cfg.scenario]||'';
+  document.getElementById('footSc').textContent=FOOTLABELS[cfg.scenario]||'';
+}
+
+function redrawAll(){ drawSim(); drawConc(); drawMSD(); updateStats(); }
+
+// ── Controls ──
+document.getElementById('startBtn').addEventListener('click',()=>{
+  if(running) return;
+  if(!particles.length) init();
+  running=true;
+  document.getElementById('startBtn').classList.add('on');
+  setStatus('running'); tick();
+});
+
+document.getElementById('pauseBtn').addEventListener('click',()=>{
+  if(!running) return;
+  running=false;
+  if(animId) cancelAnimationFrame(animId);
+  document.getElementById('startBtn').classList.remove('on');
+  setStatus('paused');
+});
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  running=false;
+  if(animId) cancelAnimationFrame(animId);
+  cfg.N=parseInt(document.getElementById('ns').value);
+  init(); redrawAll();
+  document.getElementById('startBtn').classList.remove('on');
+  setStatus('idle');
+});
+
+document.getElementById('scSel').addEventListener('change',e=>{
+  cfg.scenario=e.target.value;
+  updateBadge();
+  const rg=document.getElementById('rg');
+  if(cfg.scenario==='highRatio'){
+    rg.classList.add('disabled-group');
+    document.getElementById('rv').textContent='15× (fixed)';
+    document.getElementById('footR').textContent='15×';
+  } else {
+    rg.classList.remove('disabled-group');
+    document.getElementById('rv').textContent=cfg.dRatio+'×';
+    document.getElementById('footR').textContent=cfg.dRatio+'×';
+  }
+  document.getElementById('resetBtn').click();
+});
+
+document.getElementById('ts').addEventListener('input',e=>{
+  cfg.temperature=parseInt(e.target.value);
+  document.getElementById('tv').textContent=cfg.temperature+' K';
+  document.getElementById('footT').textContent=cfg.temperature+' K';
+});
+
+document.getElementById('rs').addEventListener('input',e=>{
+  cfg.dRatio=parseInt(e.target.value);
+  document.getElementById('rv').textContent=cfg.dRatio+'×';
+  document.getElementById('footR').textContent=cfg.dRatio+'×';
+});
+
+document.getElementById('ns').addEventListener('input',e=>{
+  const n=parseInt(e.target.value);
+  document.getElementById('nv').textContent=n;
+  document.getElementById('footN').textContent=n;
+});
+
+// ── Boot ──
+init(); redrawAll(); updateBadge();
+</script>
+</body>
+</html>
